@@ -13,6 +13,7 @@
 #include "sleep.h"
 
 
+
 #define IRPT_CTL_DEVID 		XPAR_PS7_SCUGIC_0_DEVICE_ID
 #define GPIO_DEVID			XPAR_PS7_GPIO_0_DEVICE_ID
 #define GPIO_IRPT_ID		XPAR_PS7_GPIO_0_INTR
@@ -29,6 +30,8 @@
 #define GAMMA_BASE_ADDR     XPAR_CAMERA_IN_AXI_GAMMACORRECTION_0_BASEADDR
 
 #define LED_DRIVER_BASE_ADDR 0x43C50000
+
+#define MEM_BLOCK_ADDR		0x40000000
 
 using namespace digilent;
 
@@ -105,20 +108,61 @@ int main()
 	uint32_t color_values;
 
 
-	while(1){
-		for(int i = 0; i < 3; i++){
-			for(int j = 0; j < 512; j++){
-				Xil_Out32(LED_DRIVER_BASE_ADDR + i * 4, j);
-				usleep(1000);
-			}
-			for(int j = 0; j < 512; j++){
-				Xil_Out32(LED_DRIVER_BASE_ADDR + i * 4, 512-j);
-				usleep(1000);
-			}
 
+	for(int i = 0; i <= 3; i++){
+		for(int j = 0; j < 512; j++){
+			Xil_Out32(LED_DRIVER_BASE_ADDR + i * 4, j);
+			usleep(1000);
 		}
-
+		for(int j = 0; j < 512; j++){
+			Xil_Out32(LED_DRIVER_BASE_ADDR + i * 4, 512-j);
+			usleep(1000);
+		}
 	}
+
+	int read1 = 0;
+	int read2 = 0;
+	int write = 0;
+
+	int  counter = 0;
+
+
+	Xil_Out32(LED_DRIVER_BASE_ADDR, 0);
+	for(int i = 0; i < 102400; i++){
+
+		Xil_In32(MEM_BLOCK_ADDR + i*4);
+		Xil_Out32(MEM_BLOCK_ADDR + i*4,42);
+	}
+	Xil_Out32(LED_DRIVER_BASE_ADDR, 512);
+
+
+	Xil_Out32(LED_DRIVER_BASE_ADDR + 4, 0);
+	for(int i = 0; i < 102400; i++){
+
+		Xil_In32(MEM_BASE_ADDR + i*4);
+		Xil_Out32(MEM_BASE_ADDR + i*4,42);
+	}
+	Xil_Out32(LED_DRIVER_BASE_ADDR + 4, 512);
+
+	while(1){
+		for(int x = 0; x < 416; x++){
+			for(int y = 0; y< 416; y++){
+
+				int address = (y) << 9 ;
+				address += x;
+				address <<= 2; //shift two to take word size
+
+				read1 = Xil_In32(MEM_BLOCK_ADDR + address);
+
+				char R = read1 & 0x000000ff;
+				char G = (read1 & 0x0000ff00)>>8;
+				char B = (read1 & 0x00ff0000)>>16;
+
+				xil_printf("R: %03d, G: %03d, B: %03d, x: %03d, y: %03d \n", R,G,B, x, y);
+			}
+		}
+	}
+
 
 
 	while (1) {
